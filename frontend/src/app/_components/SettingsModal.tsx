@@ -7,6 +7,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/ConfigContext";
 import { useRecordingState } from "@/contexts/RecordingStateContext";
+import { useState, useEffect } from "react";
+import { configService } from "@/services/configService";
 
 type modalType = "modelSettings" | "deviceSettings" | "languageSettings" | "modelSelector" | "errorAlert" | "chunkDropWarning";
 
@@ -57,6 +59,43 @@ export function SettingsModals({
   } = useConfig();
 
   const { isRecording } = useRecordingState();
+
+  // Summary prompt template state
+  const [summaryPromptTemplate, setSummaryPromptTemplate] = useState<string>('');
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+  // Load summary prompt template when modal opens
+  useEffect(() => {
+    if (modals.modelSettings) {
+      const loadTemplate = async () => {
+        setIsLoadingTemplate(true);
+        try {
+          const template = await configService.getSummaryPromptTemplate();
+          setSummaryPromptTemplate(template || '');
+        } catch (error) {
+          console.error('Failed to load summary prompt template:', error);
+        } finally {
+          setIsLoadingTemplate(false);
+        }
+      };
+      loadTemplate();
+    }
+  }, [modals.modelSettings]);
+
+  // Save summary prompt template
+  const handleSavePromptTemplate = async () => {
+    setIsSavingTemplate(true);
+    try {
+      await configService.saveSummaryPromptTemplate(summaryPromptTemplate);
+      toast.success('Summary prompt template saved');
+    } catch (error) {
+      console.error('Failed to save summary prompt template:', error);
+      toast.error('Failed to save prompt template');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
 
   return <>
     {/* Legacy Settings Modal */}
@@ -148,6 +187,32 @@ export function SettingsModals({
                     </div>
                   </div>
                 )}
+
+                {/* Summary Prompt Template */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Summary Prompt Template
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    This template will be used as context for all AI summary generations. Add instructions about format, focus areas, or any specific requirements.
+                  </p>
+                  <textarea
+                    placeholder="Example: Focus on action items and deadlines. Use bullet points. Include participant names when mentioning decisions..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[120px] resize-y"
+                    value={summaryPromptTemplate}
+                    onChange={(e) => setSummaryPromptTemplate(e.target.value)}
+                    disabled={isLoadingTemplate}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleSavePromptTemplate}
+                      disabled={isSavingTemplate || isLoadingTemplate}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingTemplate ? 'Saving...' : 'Save Template'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

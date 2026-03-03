@@ -1381,3 +1381,49 @@ pub async fn api_test_custom_openai_connection<R: Runtime>(
         }
     }
 }
+
+#[tauri::command]
+pub async fn api_get_summary_prompt_template<R: Runtime>(
+    _app: AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    _auth_token: Option<String>,
+) -> Result<Option<String>, String> {
+    log_info!("api_get_summary_prompt_template called (native)");
+    let pool = state.db_manager.pool();
+
+    match SettingsRepository::get_summary_prompt_template(pool).await {
+        Ok(template) => {
+            log_info!("✅ Retrieved summary prompt template: {:?}", template.as_ref().map(|t| t.len()));
+            Ok(template)
+        }
+        Err(e) => {
+            log_error!("❌ Failed to get summary prompt template: {}", e);
+            Err(e.to_string())
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn api_save_summary_prompt_template<R: Runtime>(
+    _app: AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    template: String,
+    _auth_token: Option<String>,
+) -> Result<serde_json::Value, String> {
+    log_info!(
+        "💾 api_save_summary_prompt_template called (native): template length={}",
+        template.len()
+    );
+    let pool = state.db_manager.pool();
+
+    match SettingsRepository::save_summary_prompt_template(pool, &template).await {
+        Ok(()) => {
+            log_info!("✅ Successfully saved summary prompt template");
+            Ok(serde_json::json!({ "status": "success", "message": "Summary prompt template saved successfully" }))
+        }
+        Err(e) => {
+            log_error!("❌ Failed to save summary prompt template: {}", e);
+            Err(e.to_string())
+        }
+    }
+}

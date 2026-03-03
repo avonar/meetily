@@ -345,4 +345,52 @@ impl SettingsRepository {
 
         Ok(())
     }
+
+    /// Gets the summary prompt template from settings
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
+    ///
+    /// # Returns
+    /// * `Ok(Some(String))` - Template found
+    /// * `Ok(None)` - No template configured
+    /// * `Err(sqlx::Error)` - Database error
+    pub async fn get_summary_prompt_template(
+        pool: &SqlitePool,
+    ) -> std::result::Result<Option<String>, sqlx::Error> {
+        let template: Option<Option<String>> = sqlx::query_scalar(
+            "SELECT summaryPromptTemplate FROM settings WHERE id = '1' LIMIT 1"
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(template.flatten())
+    }
+
+    /// Saves the summary prompt template
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
+    /// * `template` - The custom prompt template for summary generation
+    ///
+    /// # Returns
+    /// * `Ok(())` - Template saved successfully
+    /// * `Err(sqlx::Error)` - Database error
+    pub async fn save_summary_prompt_template(
+        pool: &SqlitePool,
+        template: &str,
+    ) -> std::result::Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO settings (id, provider, model, whisperModel, summaryPromptTemplate)
+            VALUES ('1', 'ollama', 'llama3.1:8b', 'large-v3', $1)
+            ON CONFLICT(id) DO UPDATE SET
+                summaryPromptTemplate = excluded.summaryPromptTemplate
+            "#,
+        )
+        .bind(template)
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }

@@ -96,6 +96,10 @@ pub struct Setting {
     #[sqlx(rename = "customOpenAIConfig")]
     #[serde(rename = "customOpenAIConfig")]
     pub custom_openai_config: Option<String>,
+    /// Custom prompt template for summary generation
+    #[sqlx(rename = "summaryPromptTemplate")]
+    #[serde(rename = "summaryPromptTemplate")]
+    pub summary_prompt_template: Option<String>,
 }
 
 impl Setting {

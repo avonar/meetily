@@ -112,6 +112,25 @@ export class ConfigService {
       model,
     });
   }
+
+  /**
+   * Get saved summary prompt template
+   * @returns Promise with template string or null
+   */
+  async getSummaryPromptTemplate(): Promise<string | null> {
+    return invoke<string | null>('api_get_summary_prompt_template');
+  }
+
+  /**
+   * Save summary prompt template
+   * @param template - The custom prompt template for summary generation
+   * @returns Promise with result status
+   */
+  async saveSummaryPromptTemplate(template: string): Promise<{ status: string; message: string }> {
+    return invoke<{ status: string; message: string }>('api_save_summary_prompt_template', {
+      template,
+    });
+  }
 }
 
 // Export singleton instance

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
 import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
 import { ModelConfig } from '@/components/ModelSettingsModal';
+import { configService } from '@/services/configService';
 
 // Custom hooks
 import { useMeetingData } from '@/hooks/meeting-details/useMeetingData';
@@ -57,6 +58,22 @@ export default function PageContent({
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
+
+  // Load saved summary prompt template on mount
+  useEffect(() => {
+    const loadSavedPromptTemplate = async () => {
+      try {
+        const savedTemplate = await configService.getSummaryPromptTemplate();
+        if (savedTemplate) {
+          setCustomPrompt(savedTemplate);
+          console.log('[PageContent] Loaded saved summary prompt template');
+        }
+      } catch (error) {
+        console.error('[PageContent] Failed to load summary prompt template:', error);
+      }
+    };
+    loadSavedPromptTemplate();
+  }, []);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);

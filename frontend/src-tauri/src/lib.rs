@@ -630,6 +630,9 @@ pub fn run() {
             api::api_save_custom_openai_config,
             api::api_get_custom_openai_config,
             api::api_test_custom_openai_connection,
+            // Summary prompt template commands
+            api::api_get_summary_prompt_template,
+            api::api_save_summary_prompt_template,
             // Summary commands
             summary::api_process_transcript,
             summary::api_get_summary,
