@@ -11,23 +11,25 @@ export function useTemplates() {
   }>>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('standard_meeting');
 
-  // Fetch available templates on mount
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const templates = await invokeTauri('api_list_templates') as Array<{
-          id: string;
-          name: string;
-          description: string;
-        }>;
-        console.log('Available templates:', templates);
-        setAvailableTemplates(templates);
-      } catch (error) {
-        console.error('Failed to fetch templates:', error);
-      }
-    };
-    fetchTemplates();
+  // Fetch available templates
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const templates = await invokeTauri('api_list_templates') as Array<{
+        id: string;
+        name: string;
+        description: string;
+      }>;
+      console.log('Available templates:', templates);
+      setAvailableTemplates(templates);
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    }
   }, []);
+
+  // Fetch templates on mount
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   // Handle template selection
   const handleTemplateSelection = useCallback((templateId: string, templateName: string) => {
@@ -38,9 +40,15 @@ export function useTemplates() {
     Analytics.trackFeatureUsed('template_selected');
   }, []);
 
+  // Refresh templates (called after creating/deleting templates)
+  const refreshTemplates = useCallback(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
   return {
     availableTemplates,
     selectedTemplate,
     handleTemplateSelection,
+    refreshTemplates,
   };
 }

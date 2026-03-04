@@ -197,6 +197,97 @@ pub fn list_template_ids() -> Vec<String> {
     ids
 }
 
+/// Save a custom template to the user's templates directory
+///
+/// # Arguments
+/// * `template_id` - Template identifier (without .json extension)
+/// * `template_json` - JSON content of the template
+///
+/// # Returns
+/// Ok(()) on success, Err with error message on failure
+pub fn save_custom_template(template_id: &str, template_json: &str) -> Result<(), String> {
+    // Validate template_id (only alphanumeric and underscores)
+    if !template_id.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return Err("Template ID can only contain alphanumeric characters and underscores".to_string());
+    }
+
+    if template_id.is_empty() {
+        return Err("Template ID cannot be empty".to_string());
+    }
+
+    // Validate the JSON first
+    validate_and_parse_template(template_json)?;
+
+    // Get or create custom templates directory
+    let custom_dir = get_custom_templates_dir()
+        .ok_or_else(|| "Could not determine application data directory".to_string())?;
+
+    // Create directory if it doesn't exist
+    if !custom_dir.exists() {
+        std::fs::create_dir_all(&custom_dir)
+            .map_err(|e| format!("Failed to create templates directory: {}", e))?;
+        info!("Created custom templates directory at: {:?}", custom_dir);
+    }
+
+    // Write the template file
+    let template_path = custom_dir.join(format!("{}.json", template_id));
+    std::fs::write(&template_path, template_json)
+        .map_err(|e| format!("Failed to save template: {}", e))?;
+
+    info!("Saved custom template '{}' to {:?}", template_id, template_path);
+    Ok(())
+}
+
+/// Delete a custom template from the user's templates directory
+///
+/// Note: Only custom templates can be deleted. Built-in templates cannot be deleted.
+///
+/// # Arguments
+/// * `template_id` - Template identifier (without .json extension)
+///
+/// # Returns
+/// Ok(()) on success, Err with error message on failure
+pub fn delete_custom_template(template_id: &str) -> Result<(), String> {
+    // Check if this is a built-in template
+    if defaults::get_builtin_template(template_id).is_some() {
+        return Err(format!("Cannot delete built-in template '{}'", template_id));
+    }
+
+    let custom_dir = get_custom_templates_dir()
+        .ok_or_else(|| "Could not determine application data directory".to_string())?;
+
+    let template_path = custom_dir.join(format!("{}.json", template_id));
+
+    if !template_path.exists() {
+        return Err(format!("Custom template '{}' not found", template_id));
+    }
+
+    std::fs::remove_file(&template_path)
+        .map_err(|e| format!("Failed to delete template: {}", e))?;
+
+    info!("Deleted custom template '{}' from {:?}", template_id, template_path);
+    Ok(())
+}
+
+/// Check if a template is a built-in (non-deletable) template
+///
+/// # Arguments
+/// * `template_id` - Template identifier
+///
+/// # Returns
+/// true if the template is built-in, false if custom
+pub fn is_builtin_template(template_id: &str) -> bool {
+    defaults::get_builtin_template(template_id).is_some()
+}
+
+/// Get the path to the custom templates directory
+///
+/// # Returns
+/// PathBuf to the custom templates directory, or None if unavailable
+pub fn get_custom_templates_directory() -> Option<std::path::PathBuf> {
+    get_custom_templates_dir()
+}
+
 /// List all available templates with their metadata
 ///
 /// Returns a list of (id, name, description) tuples

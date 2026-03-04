@@ -123,6 +123,153 @@ pub async fn api_validate_template<R: Runtime>(
     }
 }
 
+/// Extended template info with builtin flag
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TemplateInfoExtended {
+    /// Template identifier (e.g., "daily_standup", "standard_meeting")
+    pub id: String,
+
+    /// Display name for the template
+    pub name: String,
+
+    /// Brief description of the template's purpose
+    pub description: String,
+
+    /// Whether this is a built-in template (cannot be deleted)
+    pub is_builtin: bool,
+}
+
+/// Lists all available templates with extended info including builtin flag
+///
+/// # Returns
+/// Vector of TemplateInfoExtended
+#[tauri::command]
+pub async fn api_list_templates_extended<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+) -> Result<Vec<TemplateInfoExtended>, String> {
+    info!("api_list_templates_extended called");
+
+    let template_list = templates::list_templates();
+
+    let template_infos: Vec<TemplateInfoExtended> = template_list
+        .into_iter()
+        .map(|(id, name, description)| {
+            let is_builtin = templates::is_builtin_template(&id);
+            TemplateInfoExtended {
+                id,
+                name,
+                description,
+                is_builtin,
+            }
+        })
+        .collect();
+
+    info!("Found {} available templates (extended)", template_infos.len());
+
+    Ok(template_infos)
+}
+
+/// Saves a custom template to the user's templates directory
+///
+/// # Arguments
+/// * `template_id` - Template identifier (alphanumeric and underscores only)
+/// * `template_json` - JSON content of the template
+///
+/// # Returns
+/// Ok(()) on success, Err(error_message) on failure
+#[tauri::command]
+pub async fn api_save_custom_template<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+    template_json: String,
+) -> Result<(), String> {
+    info!("api_save_custom_template called for template_id: {}", template_id);
+
+    templates::save_custom_template(&template_id, &template_json)?;
+
+    info!("Custom template '{}' saved successfully", template_id);
+    Ok(())
+}
+
+/// Deletes a custom template from the user's templates directory
+///
+/// Note: Built-in templates cannot be deleted.
+///
+/// # Arguments
+/// * `template_id` - Template identifier
+///
+/// # Returns
+/// Ok(()) on success, Err(error_message) on failure
+#[tauri::command]
+pub async fn api_delete_custom_template<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+) -> Result<(), String> {
+    info!("api_delete_custom_template called for template_id: {}", template_id);
+
+    templates::delete_custom_template(&template_id)?;
+
+    info!("Custom template '{}' deleted successfully", template_id);
+    Ok(())
+}
+
+/// Gets the full template JSON content
+///
+/// Useful for template editor to load and edit existing templates
+///
+/// # Arguments
+/// * `template_id` - Template identifier
+///
+/// # Returns
+/// The template JSON string
+#[tauri::command]
+pub async fn api_get_template_json<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+) -> Result<String, String> {
+    info!("api_get_template_json called for template_id: {}", template_id);
+
+    let template = templates::get_template(&template_id)?;
+
+    // Serialize back to pretty JSON
+    let json = serde_json::to_string_pretty(&template)
+        .map_err(|e| format!("Failed to serialize template: {}", e))?;
+
+    info!("Retrieved template JSON for '{}'", template_id);
+    Ok(json)
+}
+
+/// Checks if a template ID is valid (alphanumeric and underscores only)
+///
+/// # Arguments
+/// * `template_id` - Template identifier to validate
+///
+/// # Returns
+/// Ok(true) if valid, Ok(false) if invalid
+#[tauri::command]
+pub async fn api_is_valid_template_id<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+) -> Result<bool, String> {
+    let is_valid = !template_id.is_empty() 
+        && template_id.chars().all(|c| c.is_alphanumeric() || c == '_');
+    
+    Ok(is_valid)
+}
+
+/// Gets the path to the custom templates directory
+///
+/// # Returns
+/// The path string if available
+#[tauri::command]
+pub async fn api_get_templates_directory<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+) -> Result<String, String> {
+    templates::get_custom_templates_directory()
+        .map(|p| p.to_string_lossy().to_string())
+        .ok_or_else(|| "Could not determine templates directory".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
